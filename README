@@ -1,0 +1,36 @@
+🎤 Speech Emotion Recognition (SER) System--------------------------------
+
+Detect emotions from voice recordings using machine learning. This project classifies emotions (happy, sad, angry, neutral, etc.) from audio inputs, now with a FastAPI backend and interactive web interface.
+
+🌟 Features -----------------------------------------------
+
+Accurate Emotion Detection: Trained on the RAVDESS dataset (95% accuracy).
+
+Web Interface: Upload audio files or record directly via the browser.
+
+API Endpoints: Integrate with other apps using FastAPI.
+
+Real-Time Prediction: Instant results with visualized output.
+
+🛠 Technologies Used------------------------------------
+
+Category	Tools/Frameworks
+Backend	Python, FastAPI
+Machine Learning	Scikit-learn (Random Forest), Librosa, NumPy, Pandas
+Frontend	HTML, CSS, JavaScript
+Audio Processing	Librosa, PyAudio (for recording)
+
+How to Use the Model----------------------------------
+
+Option 1: Web Interface
+
+Go to http://localhost:8000 (after starting FastAPI).
+
+Upload an audio file or record voice.
+
+View the predicted emotion (e.g., "Happy 😊").
+
+Option 2: API Request
+curl -X POST -F "file=@audio.wav" http://localhost:8000/predict
+Response:
+{"emotion": "happy", "confidence": 0.95}
