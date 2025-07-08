@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Voice Emotion Detection</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
+    .upload-container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px;
+    }
+
+    .file-upload {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      border: 2px dashed #3498db;
+      border-radius: 5px;
+      padding: 30px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .file-upload:hover {
+      background-color: #f0f8ff;
+      border-color: #2980b9;
+    }
+
+    .file-upload i {
+      font-size: 48px;
+      color: #3498db;
+      margin-bottom: 15px;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-top: 20px;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    button:disabled {
+      background-color: #95a5a6;
+      cursor: not-allowed;
+    }
+
+    .result-container {
+      background-color: white;
+      border-radius: 8px;
+      padding: 30px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      display: none;
+    }
+
+    .result {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 20px;
+    }
+
+    .confidence {
+      text-align: center;
+      font-size: 18px;
+      color: #7f8c8d;
+      margin-top: 10px;
+    }
+
+    .audio-player {
+      width: 100%;
+      margin: 20px 0;
+    }
+
+    .loader {
+      border: 5px solid #f3f3f3;
+      border-top: 5px solid #3498db;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .error {
+      color: #e74c3c;
+      text-align: center;
+      margin-top: 20px;
+      display: none;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+</head>
+<body>
+  <h1>Voice Emotion Detection</h1>
+
+  <div class="upload-container">
+    <div class="file-upload" id="drop-area">
+      <i class="fas fa-microphone-alt"></i>
+      <p>Click to select or drag & drop an audio file (WAV or MP3)</p>
+      <input type="file" id="file-input" accept=".wav,.mp3" />
+    </div>
+
+    <div id="file-info" style="margin-top: 15px; display: none;">
+      <p>Selected file: <span id="file-name"></span></p>
+      <audio id="audio-preview" controls class="audio-player"></audio>
+    </div>
+
+    <button id="analyze-btn" disabled>Analyze Emotion</button>
+  </div>
+
+  <div class="loader" id="loader"></div>
+
+  <div class="error" id="error-message"></div>
+
+  <div class="result-container" id="result-container">
+    <h2>Analysis Result</h2>
+    <div class="result" id="emotion-result"></div>
+    <div class="confidence" id="confidence-result"></div>
+  </div>
+
+  <script>
+    const fileInput = document.getElementById('file-input');
+    const dropArea = document.getElementById('drop-area');
+    const fileName = document.getElementById('file-name');
+    const fileInfo = document.getElementById('file-info');
+    const audioPreview = document.getElementById('audio-preview');
+    const analyzeBtn = document.getElementById('analyze-btn');
+    const loader = document.getElementById('loader');
+    const resultContainer = document.getElementById('result-container');
+    const emotionResult = document.getElementById('emotion-result');
+    const confidenceResult = document.getElementById('confidence-result');
+    const errorMessage = document.getElementById('error-message');
+
+    let selectedFile = null;
+
+    dropArea.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files.length) {
+        handleFile(e.target.files[0]);
+      }
+    });
+
+    dropArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropArea.style.backgroundColor = '#f0f8ff';
+      dropArea.style.borderColor = '#2980b9';
+    });
+
+    dropArea.addEventListener('dragleave', () => {
+      dropArea.style.backgroundColor = '';
+      dropArea.style.borderColor = '#3498db';
+    });
+
+    dropArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropArea.style.backgroundColor = '';
+      dropArea.style.borderColor = '#3498db';
+      if (e.dataTransfer.files.length) {
+        handleFile(e.dataTransfer.files[0]);
+      }
+    });
+
+    function handleFile(file) {
+      if (!file.name.toLowerCase().endsWith('.wav') && !file.name.toLowerCase().endsWith('.mp3')) {
+        showError('Please upload a WAV or MP3 file');
+        return;
+      }
+
+      selectedFile = file;
+      fileName.textContent = file.name;
+      fileInfo.style.display = 'block';
+      analyzeBtn.disabled = false;
+      audioPreview.src = URL.createObjectURL(file);
+      resultContainer.style.display = 'none';
+      errorMessage.style.display = 'none';
+    }
+
+    analyzeBtn.addEventListener('click', async () => {
+      if (!selectedFile) return;
+
+      loader.style.display = 'block';
+      resultContainer.style.display = 'none';
+      errorMessage.style.display = 'none';
+      analyzeBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const response = await fetch('http://localhost:8000/predict', {
+          method: 'POST',
+          body: formData
+        });
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.detail || 'Analysis failed');
+        }
+
+        const data = await response.json();
+
+        if (data.Emotion && data.Confidence !== undefined) {
+          emotionResult.textContent = `Emotion: ${data.Emotion}`;
+          confidenceResult.textContent = `Confidence: ${data.Confidence.toFixed(2)}%`;
+          resultContainer.style.display = 'block';
+        } else {
+          showError("Invalid response from server.");
+        }
+      } catch (err) {
+        showError(err.message);
+      } finally {
+        loader.style.display = 'none';
+        analyzeBtn.disabled = false;
+      }
+    });
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorMessage.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
